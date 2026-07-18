@@ -22,26 +22,36 @@ _REMAP = {0: 0, 2: 0, 4: 0, 1: 1, 3: 1, 5: 1}
 
 
 class TelemetrySource:
-    def __init__(self, cfg):
+    def __init__(self, cfg, poll_timeout_s=0.25):
         self.cfg = cfg
+        self.poll_timeout_s = poll_timeout_s
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((cfg.telemetry_host, cfg.telemetry_port))
-        self.sock.setblocking(False)
         self._last_ms = None      # game clock of the newest packet seen
         self._last_frame = Frame(0, 0, [], None)
 
     def read(self, img=None):
-        """Return the freshest Frame. Drains the socket, keeps only the newest
-        datagram. If nothing fresh arrived, returns an empty Frame (fail-safe:
-        no detections -> no fire). img (optional BGR) is attached for overlay.
+        """Return the freshest Frame. Blocks up to poll_timeout_s for a packet
+        (so the loop is paced by the game's telemetry rate, not busy-spinning),
+        then drains any backlog and keeps only the newest datagram. If nothing
+        arrives before the timeout, returns an empty Frame (fail-safe: no
+        detections -> no fire). img (optional BGR) is attached for overlay.
         """
         newest = None
+        # Block for the first packet so we pace to telemetry arrival.
+        self.sock.settimeout(self.poll_timeout_s)
+        try:
+            newest, _ = self.sock.recvfrom(65535)
+        except socket.timeout:
+            return Frame(self._last_frame.w, self._last_frame.h, [], img)
+        # Drain any backlog non-blocking; the last one wins.
+        self.sock.setblocking(False)
         while True:
             try:
                 data, _ = self.sock.recvfrom(65535)
             except BlockingIOError:
                 break
-            newest = data  # keep draining; last one wins
+            newest = data
 
         if newest is None:
             # No new packet this iteration -> nothing to act on.
