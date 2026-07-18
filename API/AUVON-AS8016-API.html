@@ -149,6 +149,15 @@
     <a href="#mode-get"><span class="m get">GET</span>/mode</a>
     <a href="#mode-put"><span class="m put">PUT</span>/mode</a>
 
+    <div class="grp">Outputs</div>
+    <a href="#out-get"><span class="m get">GET</span>/outputs</a>
+    <a href="#out-put"><span class="m put">PUT</span>/outputs</a>
+
+    <div class="grp">Device</div>
+    <a href="#timer-post"><span class="m post">POST</span>/timer</a>
+    <a href="#alloff-post"><span class="m post">POST</span>/all_off</a>
+    <a href="#status-get"><span class="m get">GET</span>/status</a>
+
     <div class="grp">Reference</div>
     <a href="#enums">Enums</a>
     <a href="#errors">Errors</a>
@@ -160,18 +169,25 @@
   <p class="sub">A REST abstraction over the AUVON AS8016 4-channel TENS / EMS muscle stimulator.
   Every endpoint maps a physical button press or LCD readout to a CRUD operation.</p>
 
-  <p class="lead">The physical device is driven by 6 buttons (Power, Mode <code>M</code>, Timer <code>T</code>,
-  Channel-select, <code>+</code>, <code>-</code>) and reports state on an LCD. This API exposes three
-  controllable surfaces: <strong>Channel</strong>, <strong>Max output</strong>, and
-  <strong>Mode</strong>. <code>GET</code> reads state off the screen; <code>PUT</code> actuates the
-  corresponding buttons until the target state is reached.</p>
+  <p class="lead">The physical device is driven by buttons (Mode <code>M</code>, Timer <code>T</code>,
+  Channel-select, <code>+</code>, <code>-</code>) plus four output relays. This API exposes
+  <strong>Channel</strong>, <strong>Max output</strong>, <strong>Mode</strong>,
+  <strong>Outputs</strong> (relay routing), and <strong>Device</strong> (timer, E-stop, status).
+  <code>GET</code> returns remembered state; <code>PUT</code> actuates buttons until the target is
+  reached; <code>POST</code> fires a one-shot action.</p>
 
-  <div class="note">This is an interface contract only &mdash; it defines paths, payloads, and example
-  request/response bodies. It does not implement transport, firmware, or the relay driver.</div>
+  <div class="note">This contract is <strong>implemented</strong> on the Axiometa Genesis Mini
+  (MicroPython) &mdash; served by <code>lib/http_api.py</code> over <code>lib/tens_controller.py</code>.
+  The device driver (5 button-bypass MOSFETs + 4 output relays) sits underneath.</div>
+
+  <div class="warn"><strong>State is a software mirror.</strong> The AS8016 gives no digital
+  feedback, so every <code>GET</code> returns the state the controller has <em>commanded</em>
+  (remembered per channel), not a reading of the LCD. If the unit is also operated by hand,
+  re-issue a <code>PUT</code> to a known value to resync.</div>
 
   <h2 id="base">Base URL &amp; conventions</h2>
   <div class="kv">
-    <div class="k">Base URL</div><div class="v"><code>http://&lt;device-host&gt;/api/v1</code></div>
+    <div class="k">Base URL</div><div class="v"><code>http://&lt;device-ip&gt;:8080/api/v1</code></div>
     <div class="k">Content-Type</div><div class="v"><code>application/json</code></div>
     <div class="k">Read ops</div><div class="v"><code>GET</code> &mdash; reflects the current LCD state</div>
     <div class="k">Write ops</div><div class="v"><code>PUT</code> (set to value) / <code>POST</code> (fire a button action)</div>
@@ -191,6 +207,7 @@
     <tr><td><code>channel</code></td><td><code>active</code></td><td><code>"A"</code> | <code>"B"</code></td><td>read / write</td></tr>
     <tr><td><code>intensity</code></td><td><code>level</code></td><td><code>0&ndash;20</code> (applies to the active channel)</td><td>read / write</td></tr>
     <tr><td><code>mode</code></td><td><code>mode</code></td><td><code>P01&ndash;P24</code> (applies to the active channel)</td><td>read / write</td></tr>
+    <tr><td><code>outputs</code></td><td><code>A1,A2,B1,B2</code></td><td><code>true</code> | <code>false</code> per jack</td><td>read / write</td></tr>
   </table>
   <div class="note">Channel <strong>A</strong> drives physical outputs <span class="pill">A1</span><span class="pill">A2</span>
   and Channel <strong>B</strong> drives <span class="pill">B1</span><span class="pill">B2</span>. A and B can hold
@@ -371,6 +388,91 @@
   </div>
   <div class="note"><code>intensity_reset: true</code> signals the device dropped this channel's level to <code>0</code>
   on mode change &mdash; re-set intensity via <code>PUT /intensity</code> afterward.</div>
+
+  <!-- ============ OUTPUTS ============ -->
+  <h2>Outputs (relay routing)</h2>
+  <p class="lead">Independently enable/disable each of the four physical output jacks
+  &mdash; <span class="pill">A1</span><span class="pill">A2</span> (channel A) and
+  <span class="pill">B1</span><span class="pill">B2</span> (channel B) &mdash; via the four
+  output relays. This is <strong>separate from channel selection</strong>: selecting a channel
+  chooses what <code>+/-</code>/<code>M</code> affect; enabling an output physically connects
+  that jack. Boot default and <code>/all_off</code> leave every output <strong>disabled</strong>.</p>
+
+  <div class="ep" id="out-get">
+    <span class="m get">GET</span>
+    <span class="path">/outputs</span>
+    <span class="desc">Read the enabled/disabled state of all four output jacks.</span>
+  </div>
+  <div class="code">
+    <span class="label">200 OK</span>
+<pre><span class="tok-punc">{</span> <span class="tok-key">"A1"</span><span class="tok-punc">:</span> <span class="tok-bool">false</span><span class="tok-punc">,</span> <span class="tok-key">"A2"</span><span class="tok-punc">:</span> <span class="tok-bool">false</span><span class="tok-punc">,</span> <span class="tok-key">"B1"</span><span class="tok-punc">:</span> <span class="tok-bool">true</span><span class="tok-punc">,</span> <span class="tok-key">"B2"</span><span class="tok-punc">:</span> <span class="tok-bool">true</span> <span class="tok-punc">}</span></pre>
+  </div>
+
+  <div class="ep" id="out-put">
+    <span class="m put">PUT</span>
+    <span class="path">/outputs</span>
+    <span class="desc">Enable/disable one jack, or both jacks of a channel at once.</span>
+  </div>
+  <table>
+    <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+    <tr><td><code>jack</code></td><td>string</td><td><span class="opt">one of jack / channel</span></td><td><code>"A1"</code>, <code>"A2"</code>, <code>"B1"</code>, <code>"B2"</code>.</td></tr>
+    <tr><td><code>channel</code></td><td>string</td><td><span class="opt">one of jack / channel</span></td><td><code>"A"</code> or <code>"B"</code> &mdash; sets both jacks of the channel.</td></tr>
+    <tr><td><code>enabled</code></td><td>bool</td><td><span class="req">required</span></td><td><code>true</code> connects, <code>false</code> disconnects.</td></tr>
+  </table>
+  <div class="cols">
+    <div class="code">
+      <span class="label">Request</span>
+<pre><span class="req-line"><span class="verb">PUT</span> /api/v1/outputs</span>
+<span class="tok-punc">{</span> <span class="tok-key">"jack"</span><span class="tok-punc">:</span> <span class="tok-str">"A1"</span><span class="tok-punc">,</span> <span class="tok-key">"enabled"</span><span class="tok-punc">:</span> <span class="tok-bool">true</span> <span class="tok-punc">}</span></pre>
+    </div>
+    <div class="code">
+      <span class="label">200 OK</span>
+<pre><span class="tok-punc">{</span> <span class="tok-key">"action"</span><span class="tok-punc">:</span> <span class="tok-str">"output_A1:on"</span> <span class="tok-punc">}</span></pre>
+    </div>
+  </div>
+
+  <!-- ============ DEVICE ============ -->
+  <h2>Device (timer, safety, status)</h2>
+
+  <div class="ep" id="timer-post">
+    <span class="m post">POST</span>
+    <span class="path">/timer</span>
+    <span class="desc">Tap the Time button once (steps the session timer, 10&ndash;90 min on the device).</span>
+  </div>
+  <div class="code"><span class="label">200 OK</span>
+<pre><span class="tok-punc">{</span> <span class="tok-key">"action"</span><span class="tok-punc">:</span> <span class="tok-str">"timer_adjust"</span> <span class="tok-punc">}</span></pre></div>
+
+  <div class="ep" id="alloff-post">
+    <span class="m post">POST</span>
+    <span class="path">/all_off</span>
+    <span class="desc">E-stop. Releases all buttons and opens all output relays immediately.</span>
+  </div>
+  <div class="warn"><strong>Safety.</strong> <code>/all_off</code> opens every relay, so no output flows
+  regardless of the mirrored intensity level. It does not change the device's remembered
+  mode/level. This is also the boot default.</div>
+  <div class="code"><span class="label">200 OK</span>
+<pre><span class="tok-punc">{</span> <span class="tok-key">"action"</span><span class="tok-punc">:</span> <span class="tok-str">"all_off"</span> <span class="tok-punc">}</span></pre></div>
+
+  <div class="ep" id="status-get">
+    <span class="m get">GET</span>
+    <span class="path">/status</span>
+    <span class="desc">Full mirrored state snapshot: both channels' level+mode, output relays, uptime, Wi-Fi.</span>
+  </div>
+  <div class="code"><span class="label">200 OK</span>
+<pre><span class="tok-punc">{</span>
+  <span class="tok-key">"active_channel"</span><span class="tok-punc">:</span> <span class="tok-str">"A"</span><span class="tok-punc">,</span>
+  <span class="tok-key">"channels"</span><span class="tok-punc">:</span> <span class="tok-punc">{</span>
+    <span class="tok-key">"A"</span><span class="tok-punc">:</span> <span class="tok-punc">{</span> <span class="tok-key">"level"</span><span class="tok-punc">:</span> <span class="tok-num">0</span><span class="tok-punc">,</span> <span class="tok-key">"mode"</span><span class="tok-punc">:</span> <span class="tok-str">"P01"</span><span class="tok-punc">,</span> <span class="tok-key">"master_mode"</span><span class="tok-punc">:</span> <span class="tok-str">"TENS"</span> <span class="tok-punc">},</span>
+    <span class="tok-key">"B"</span><span class="tok-punc">:</span> <span class="tok-punc">{</span> <span class="tok-key">"level"</span><span class="tok-punc">:</span> <span class="tok-num">0</span><span class="tok-punc">,</span> <span class="tok-key">"mode"</span><span class="tok-punc">:</span> <span class="tok-str">"P01"</span><span class="tok-punc">,</span> <span class="tok-key">"master_mode"</span><span class="tok-punc">:</span> <span class="tok-str">"TENS"</span> <span class="tok-punc">}</span>
+  <span class="tok-punc">},</span>
+  <span class="tok-key">"outputs"</span><span class="tok-punc">:</span> <span class="tok-punc">{</span> <span class="tok-key">"A1"</span><span class="tok-punc">:</span> <span class="tok-str">"disabled"</span><span class="tok-punc">,</span> <span class="tok-key">"A2"</span><span class="tok-punc">:</span> <span class="tok-str">"disabled"</span><span class="tok-punc">,</span> <span class="tok-key">"B1"</span><span class="tok-punc">:</span> <span class="tok-str">"disabled"</span><span class="tok-punc">,</span> <span class="tok-key">"B2"</span><span class="tok-punc">:</span> <span class="tok-str">"disabled"</span> <span class="tok-punc">},</span>
+  <span class="tok-key">"last_action"</span><span class="tok-punc">:</span> <span class="tok-str">"all_off"</span><span class="tok-punc">,</span> <span class="tok-key">"uptime_ms"</span><span class="tok-punc">:</span> <span class="tok-num">12345</span>
+<span class="tok-punc">}</span></pre></div>
+
+  <div class="note">Legacy flat aliases remain for convenience:
+  <code>POST /mode/next</code>, <code>POST /channel?ch=A</code>,
+  <code>POST /intensity/up?steps=N</code>, <code>POST /output?jack=A1&amp;enabled=true</code>,
+  <code>POST /all_off</code>, <code>GET /status</code>.</div>
 
   <!-- ============ ENUMS ============ -->
   <h2 id="enums">Enums &amp; ranges</h2>
