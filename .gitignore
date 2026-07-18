@@ -1,0 +1,14 @@
+# Device secrets (copy from *.example files)
+config/device_secrets.toml
+config/wifi_secrets.py
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor / OS
+.vscode/settings.json
+.DS_Store
+Thumbs.db

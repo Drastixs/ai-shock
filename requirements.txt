@@ -1,0 +1,10 @@
+# Host-side (PC) tools for flashing and deploying to the Genesis Mini.
+# These run on your computer, NOT on the board.
+#   py -m venv .venv
+#   .venv\Scripts\activate.bat      (Windows cmd)   or
+#   .\.venv\Scripts\Activate.ps1    (PowerShell)    or
+#   source .venv/bin/activate       (macOS/Linux)
+#   python -m pip install -r requirements.txt
+
+esptool>=4.7        # USB flash of MicroPython firmware (esp32s3)
+mpremote>=1.22      # serial + Wi-Fi (TCP) REPL and filesystem sync
