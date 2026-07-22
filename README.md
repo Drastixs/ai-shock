@@ -29,6 +29,9 @@ loop) and moves in one direction: pixels → detection → UDP → muscle.
 | **Act** | Axiometa Genesis Mini (ESP32-S3) | Receives the UDP command as its own SoftAP and drives the relay board. Firmware enforces burst limits, cooldown, and a watchdog. |
 | **Stimulate** | Relay board + AUVON 4-channel TENS | Mechanical relays sit in series with the electrode leads. The TENS unit stays battery-powered and fully floating for galvanic isolation. |
 
+The live capture → detect → target → stim loop that ties this together lives in
+[`cheat-loop/`](cheat-loop/).
+
 ## Safety
 
 These invariants are non-negotiable and double as the demo narration:
@@ -44,6 +47,7 @@ These invariants are non-negotiable and double as the demo narration:
 .
 ├── README.md          You are here — project overview
 ├── ROADMAP.md         Build order and milestones
+├── cheat-loop/        The live inference loop (capture → detect → target → stim)
 ├── docs/              Reference material
 │   ├── training.md              Vision-model data → training → deploy pipeline
 │   ├── API.md                   Control API (Python module + HTTP) for the TENS controller
@@ -58,6 +62,7 @@ These invariants are non-negotiable and double as the demo narration:
 The build is staged so each tier is independently demoable — see [ROADMAP.md](ROADMAP.md)
 for the full plan and current status.
 
+- **Run the live loop** — see [`cheat-loop/README.md`](cheat-loop/README.md) and [`cheat-loop/loop-design.md`](cheat-loop/loop-design.md).
 - **Train the detector** — see [`modal/README.md`](modal/README.md) and [`docs/training.md`](docs/training.md).
 - **Drive the hardware** — see [`docs/API.md`](docs/API.md) for the Python and HTTP control surface.
 
