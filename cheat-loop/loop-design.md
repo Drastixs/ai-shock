@@ -82,7 +82,7 @@ Lifted from the validated `~/vision/infer_test.py`:
    un-letterbox back to screen pixels. ~1.3 ms.
 
 Classes: `0 = enemy` (body), `1 = head`. (The engine was trained with the 2-class
-remap; see `training.md`.)
+remap; see `../docs/training.md`.)
 
 ### 2b. TelemetrySource (the ground-truth path)
 Bind a UDP socket to `127.0.0.1:28786`. Each datagram is one frame:
