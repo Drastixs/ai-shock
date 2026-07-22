@@ -1,6 +1,6 @@
 # Phase 3 — Control API (unified)
 
-Two equivalent ways to drive the hardware: import the Python module, or call the HTTP server. Neither exposes raw GPIO numbers. The HTTP surface implements the team's REST contract in `docs/AUVON-AS8016-API.html`; this doc is the source of truth for both.
+Two equivalent ways to drive the hardware: import the Python module, or call the HTTP server. Neither exposes raw GPIO numbers. The HTTP surface implements the team's REST contract in `AUVON-AS8016-API.html`; this doc is the source of truth for both.
 
 ## State model (important)
 

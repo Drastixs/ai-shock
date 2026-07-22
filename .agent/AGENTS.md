@@ -1,6 +1,6 @@
 # Hardware Hackathon
 Hardware Hackathon with Aximeta + anthropic + Bambu labs + elevenlabs + seedcamp
-Keep things simple and demoable with clear goals throughout the roadmap `ROADMAP.md`
+Keep things simple and demoable with clear goals throughout the roadmap `../ROADMAP.md`
 
 # Project Summary
 Building a **Neuromuscular Aim Assistant**: an AI that plays Assault Cube *through a human's arm* by electrically stimulating their muscles. (Concept demo: Mr Homeless — https://www.youtube.com/watch?v=9alJwQG-Wbk)
@@ -10,7 +10,7 @@ Building a **Neuromuscular Aim Assistant**: an AI that plays Assault Cube *throu
 ## Signal chain (all on "Short Network" mobile access point)
 1. **Jetson Orin Nano** ("ShortAi" — access via `ssh shortai`, passwordless sudo) — runs Assault Cube (compiled from source, ARM64) and a vision model (YOLO + TensorRT) detecting enemies on screen. A UDP telemetry hook patched into the game source provides auto-labeled training data and a fallback demo path.
 2. **Axiometa Genesis Mini** (ESP32-S3-MINI-1-N4R2, 4MB flash/2MB PSRAM) — 3.3V logic, USB-C, 4× AX22 ports (3 GPIO + ADC + I2C/SPI/UART each) + STEMMA QT. Arduino/MicroPython; SoftAP + raw UDP supported. Receives stim commands over UDP running as its own AP (no venue WiFi, no TCP/MQTT). Docs/schematic: https://www.axiometa.io/products/axiometa-genesis-mini
-3. **Relay board** — ESP32 GPIO → IRLZ44N (flyback diodes on coils) → mechanical relays wired **in series** with one electrode lead per TENS channel, normally open. Relays chosen for galvanic isolation: the TENS unit (AUVON 4-channel, B08FM4KS1R — datasheet: `AUVON-AS8016-datasheet.pdf`) stays battery-powered and fully floating;
+3. **Relay board** — ESP32 GPIO → IRLZ44N (flyback diodes on coils) → mechanical relays wired **in series** with one electrode lead per TENS channel, normally open. Relays chosen for galvanic isolation: the TENS unit (AUVON 4-channel, B08FM4KS1R — datasheet: `../docs/AUVON-AS8016-datasheet.pdf`) stays battery-powered and fully floating;
 
 ## Safety invariants (non-negotiable, also the demo narration)
 - Normally-open relays: any crash, power loss, or WiFi drop = stim off.

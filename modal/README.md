@@ -27,4 +27,4 @@ scp weights/best.onnx shortai:~/models/
 ssh shortai '/usr/src/tensorrt/bin/trtexec --onnx=$HOME/models/best.onnx --saveEngine=$HOME/models/best_fp16.engine --fp16 --memPoolSize=workspace:2048'
 ```
 
-Notes: `data.yaml` inside the tar must use absolute `path: /vol/dataset`. Never export `format="engine"` on Modal — TensorRT engines are device-specific, build on the Jetson. Details/rationale: ../training.md
+Notes: `data.yaml` inside the tar must use absolute `path: /vol/dataset`. Never export `format="engine"` on Modal — TensorRT engines are device-specific, build on the Jetson. Details/rationale: ../docs/training.md
